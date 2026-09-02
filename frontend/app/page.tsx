@@ -89,11 +89,7 @@ export default function Home() {
       console.error("API error:", error);
 
       const errorMessage =
-        error?.message
-          ? (error.message.startsWith("API request failed")
-              ? "Sorry, I couldn't get an answer right now. Please check backend connection."
-              : error.message)
-          : "Sorry, I couldn't get an answer right now. Please try again.";
+        error?.message || "Sorry, I couldn't get an answer right now. Please try again.";
 
       setMessages((previous) => [
         ...previous,

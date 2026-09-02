@@ -22,8 +22,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+@app.get("/api")
+@app.get("/api/health")
+def health():
+    return {"status": "ok", "message": "Book RAG API is running"}
+
 @app.post("/api/ask")
 @app.post("/ask")
+@app.post("/api")
+@app.post("/")
 def ask(payload: dict):
     question = payload.get("question", "").strip()
 
@@ -36,3 +44,7 @@ def ask(payload: dict):
     except Exception as e:
         print(f"Error in /ask handler: {e}")
         return {"error": str(e)}
+
+@app.post("/{full_path:path}")
+def ask_catchall(full_path: str, payload: dict):
+    return ask(payload)
