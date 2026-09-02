@@ -4,6 +4,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Add the project root to Python sys.path
+sys.path.append(str(Path(__file__).resolve().parent.parent))
+
+from scripts.rag import ask_question
+
 app = FastAPI()
 
 allowed_origins_raw = os.getenv("ALLOWED_ORIGINS", "*")
@@ -17,13 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add the project root (book_RAG/) to Python's import path,
-# so we can import from the sibling "scripts" folder.
-sys.path.append(str(Path(__file__).resolve().parents[2]))
-
-from scripts.rag import ask_question
-
-
+@app.post("/api/ask")
 @app.post("/ask")
 def ask(payload: dict):
     question = payload.get("question", "").strip()
