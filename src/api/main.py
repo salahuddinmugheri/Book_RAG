@@ -24,6 +24,7 @@ sys.path.append(str(Path(__file__).resolve().parents[2]))
 from scripts.rag import ask_question
 
 
+@app.post("/api/ask")
 @app.post("/ask")
 def ask(payload: dict):
     question = payload.get("question", "").strip()
@@ -31,5 +32,9 @@ def ask(payload: dict):
     if not question:
         return {"error": "Question is required."}
 
-    result = ask_question(question)
-    return result
+    try:
+        result = ask_question(question)
+        return result
+    except Exception as e:
+        print(f"Error in /ask handler: {e}")
+        return {"error": str(e)}

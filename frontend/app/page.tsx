@@ -55,8 +55,9 @@ export default function Home() {
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
-      const response = await fetch(`${apiUrl}/ask`, {
+      const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "");
+      const endpoint = baseUrl ? `${baseUrl}/ask` : "/api/ask";
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -66,11 +67,11 @@ export default function Home() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API request failed: ${response.status}`);
-      }
+      const data = await response.json().catch(() => ({}));
 
-      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `API request failed with status ${response.status}`);
+      }
 
       if (data.error) {
         throw new Error(data.error);
@@ -84,15 +85,21 @@ export default function Home() {
           sources: data.sources || [],
         },
       ]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("API error:", error);
+
+      const errorMessage =
+        error?.message
+          ? (error.message.startsWith("API request failed")
+              ? "Sorry, I couldn't get an answer right now. Please check backend connection."
+              : error.message)
+          : "Sorry, I couldn't get an answer right now. Please try again.";
 
       setMessages((previous) => [
         ...previous,
         {
           role: "assistant",
-          content:
-            "Sorry, I couldn't get an answer right now. Please try again.",
+          content: errorMessage,
         },
       ]);
     } finally {

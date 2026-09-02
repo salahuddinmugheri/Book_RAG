@@ -11,30 +11,57 @@ from google.genai import types
 # Load environment variables
 load_dotenv()
 
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+_supabase_client = None
+_gemini_client = None
 
 
-if not SUPABASE_URL:
-    raise ValueError("SUPABASE_URL is missing from .env")
+def get_env_var(primary: str, *fallbacks: str) -> str:
+    val = os.getenv(primary)
+    if val and val.strip():
+        return val.strip()
+    for name in fallbacks:
+        val = os.getenv(name)
+        if val and val.strip():
+            return val.strip()
+    return ""
 
-if not SUPABASE_SECRET_KEY:
-    raise ValueError("SUPABASE_SECRET_KEY is missing from .env")
 
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY is missing from .env")
+def get_supabase_client() -> Client:
+    global _supabase_client
+    if _supabase_client is not None:
+        return _supabase_client
+
+    url = get_env_var("SUPABASE_URL")
+    key = get_env_var("SUPABASE_SECRET_KEY", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_KEY")
+
+    if not url:
+        raise RuntimeError(
+            "SUPABASE_URL is missing. Please configure SUPABASE_URL in Vercel Environment Variables."
+        )
+
+    if not key:
+        raise RuntimeError(
+            "SUPABASE_SECRET_KEY is missing. Please configure SUPABASE_SECRET_KEY in Vercel Environment Variables."
+        )
+
+    _supabase_client = create_client(url, key)
+    return _supabase_client
 
 
-# Initialize clients
-supabase: Client = create_client(
-    SUPABASE_URL,
-    SUPABASE_SECRET_KEY
-)
+def get_gemini_client() -> genai.Client:
+    global _gemini_client
+    if _gemini_client is not None:
+        return _gemini_client
 
-gemini = genai.Client(
-    api_key=GEMINI_API_KEY
-)
+    api_key = get_env_var("GEMINI_API_KEY", "GOOGLE_API_KEY", "GEMINI_KEY")
+
+    if not api_key:
+        raise RuntimeError(
+            "GEMINI_API_KEY is missing. Please configure GEMINI_API_KEY (or GOOGLE_API_KEY) in Vercel Environment Variables under Project Settings."
+        )
+
+    _gemini_client = genai.Client(api_key=api_key)
+    return _gemini_client
 
 
 # Models
@@ -89,6 +116,7 @@ def generate_query_embedding(question: str):
     Generate a 768-dimensional embedding for the user's question.
     """
 
+    gemini = get_gemini_client()
     response = gemini.models.embed_content(
         model=EMBEDDING_MODEL,
         contents=question,
@@ -283,6 +311,7 @@ def retrieve_chunks(
         retrieval_query
     )
 
+    supabase = get_supabase_client()
     response = supabase.rpc(
         "match_book_chunks",
         {
@@ -382,6 +411,7 @@ User question:
 Answer:
 """
 
+    gemini = get_gemini_client()
     response = gemini.models.generate_content(
         model=GENERATION_MODEL,
         contents=prompt,
